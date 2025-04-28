@@ -3,64 +3,41 @@ using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
-    public Transform target;
-    public float sensitivityX = 100f;
-    public float sensitivityY = 100f;
-    public float zoomSensitivity = 20f;
-    public float minDistance = 5f;
-    public float maxDistance = 25f;
-    public float smoothTime = 0.3f;
+    [SerializeField] private float rotationSpeed = 5f;
+    [SerializeField] private float zoomSpeed = 10f;
+    [SerializeField] private float minZoom = 2f;
+    [SerializeField] private float maxZoom = 20f;
 
-    private Vector2 _lookInput;
-    private float _zoomInput;
-    private Vector3 _cameraVelocity;
-    private float _distanceFromTarget;
+    private InputActions inputActions;
+    private Vector2 lookInput;
+    private float zoomInput;
+    private Vector3 currentRotation;
+    private float currentZoom = 10f;
 
-    private PlayerControls _controls;
-
-    void Awake()
+    private void Awake()
     {
-        _controls = new PlayerControls();
+        inputActions = new InputActions();
+        currentRotation = transform.eulerAngles;
 
-        // Подписываемся на события ввода
-        _controls.Camera.Look.performed += ctx => _lookInput = ctx.ReadValue<Vector2>();
-        _controls.Camera.Zoom.performed += ctx => _zoomInput = ctx.ReadValue<float>();
+        inputActions.Camera.Look.performed += ctx => lookInput = ctx.ReadValue<Vector2>();
+        inputActions.Camera.Look.canceled += ctx => lookInput = Vector2.zero;
+        inputActions.Camera.Zoom.performed += ctx => zoomInput = ctx.ReadValue<float>();
     }
 
-    void OnEnable()
+    private void OnEnable() => inputActions.Camera.Enable();
+    private void OnDisable() => inputActions.Camera.Disable();
+
+    private void Update()
     {
-        _controls.Camera.Enable();
-    }
+        // Поворот камеры
+        currentRotation.x -= lookInput.y * rotationSpeed * Time.deltaTime;
+        currentRotation.y += lookInput.x * rotationSpeed * Time.deltaTime;
+        currentRotation.x = Mathf.Clamp(currentRotation.x, -90f, 90f);
+        transform.rotation = Quaternion.Euler(currentRotation);
 
-    void OnDisable()
-    {
-        _controls.Camera.Disable();
-    }
-
-    void LateUpdate()
-    {
-        RotateCamera();
-        ZoomCamera();
-    }
-
-    void RotateCamera()
-    {
-        if (_lookInput != Vector2.zero)
-        {
-            float rotationX = _lookInput.x * sensitivityX * Time.deltaTime;
-            float rotationY = _lookInput.y * sensitivityY * Time.deltaTime;
-
-            transform.RotateAround(target.position, Vector3.up, rotationX);
-            transform.RotateAround(target.position, transform.right, -rotationY);
-        }
-    }
-
-    void ZoomCamera()
-    {
-        _distanceFromTarget -= _zoomInput * zoomSensitivity * Time.deltaTime;
-        _distanceFromTarget = Mathf.Clamp(_distanceFromTarget, minDistance, maxDistance);
-
-        Vector3 newPosition = target.position - transform.forward * _distanceFromTarget;
-        transform.position = Vector3.SmoothDamp(transform.position, newPosition, ref _cameraVelocity, smoothTime);
+        // Зум
+        currentZoom -= zoomInput * zoomSpeed * Time.deltaTime;
+        currentZoom = Mathf.Clamp(currentZoom, minZoom, maxZoom);
+        transform.localPosition = new Vector3(0, 0, -currentZoom);
     }
 }

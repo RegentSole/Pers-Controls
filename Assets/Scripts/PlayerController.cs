@@ -1,91 +1,49 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 10f;
-    public float jumpForce = 15f;
+    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float jumpForce = 10f;
     
-    private Rigidbody _rigidbody;
-    private PlayerControls _controls;
-    private Vector2 _moveInput;
-    private bool _jumpPressed;
+    private Rigidbody rb;
+    private Vector2 moveInput;
+    private bool isGrounded;
 
-    void Awake()
+    private InputActions inputActions;
+
+    private void Awake()
     {
-        // Получаем компонент Rigidbody
-        _rigidbody = GetComponent<Rigidbody>();
+        rb = GetComponent<Rigidbody>();
+        inputActions = new InputActions();
         
-        // Создаем экземпляр контроллера
-        _controls = new PlayerControls();
-        
-        // Подписываемся на события ввода
-        _controls.Player.Move.performed += ctx => _moveInput = ctx.ReadValue<Vector2>();
-        _controls.Player.Jump.performed += ctx => _jumpPressed = true;
+        inputActions.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
+        inputActions.Player.Move.canceled += ctx => moveInput = Vector2.zero;
+        inputActions.Player.Jump.performed += ctx => Jump();
     }
 
-    void OnEnable()
+    private void OnEnable() => inputActions.Player.Enable();
+    private void OnDisable() => inputActions.Player.Disable();
+
+    private void FixedUpdate()
     {
-        _controls.Enable();
+        Vector3 moveDirection = new Vector3(moveInput.x, 0, moveInput.y) * moveSpeed;
+        rb.velocity = new Vector3(moveDirection.x, rb.velocity.y, moveDirection.z);
     }
 
-    void OnDisable()
+    private void Jump()
     {
-        _controls.Disable();
-    }
-
-    void FixedUpdate()
-    {
-        MoveCharacter();
-        JumpCharacter();
-    }
-
-    void MoveCharacter()
-    {
-        if (_moveInput != Vector2.zero)
+        if (isGrounded)
         {
-            Vector3 movement = new Vector3(_moveInput.x, 0f, _moveInput.y);
-            _rigidbody.AddRelativeForce(movement * moveSpeed, ForceMode.Force);
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            isGrounded = false;
         }
     }
 
-    void JumpCharacter()
+    private void OnCollisionEnter(Collision collision)
     {
-        if (_jumpPressed && IsGrounded())
-        {
-            _rigidbody.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            _jumpPressed = false;
-        }
+        if (collision.gameObject.CompareTag("Ground"))
+            isGrounded = true;
     }
-
-    bool IsGrounded()
-    {
-        return Physics.Raycast(transform.position, Vector3.down, 1.1f);
-    }
-
-    void Update()
-{
-    if (Input.GetKeyDown(KeyCode.E))
-    {
-        SwitchToVehicleControl();
-    }
-    else if (Input.GetKeyDown(KeyCode.Q))
-    {
-        SwitchToPlayerControl();
-    }
-}
-
-void SwitchToVehicleControl()
-{
-    _controls.Player.Disable();
-    _controls.Vehicle.Enable();
-    _currentMap = "Vehicle";
-}
-
-void SwitchToPlayerControl()
-{
-    _controls.Vehicle.Disable();
-    _controls.Player.Enable();
-    _currentMap = "Player";
-}
 }
