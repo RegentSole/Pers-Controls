@@ -6,6 +6,7 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float jumpForce = 10f;
+    [SerializeField] private InputListener inputListener;
     
     private Rigidbody rb;
     private Vector2 moveInput;
@@ -24,7 +25,15 @@ public class PlayerController : MonoBehaviour
     }
 
     private void OnEnable() => inputActions.Player.Enable();
+    /*{
+         inputListener.OnMove += HandleMovement;
+        inputListener.OnJump += HandleJump;
+    }*/
     private void OnDisable() => inputActions.Player.Disable();
+    /*{
+        inputListener.OnMove -= HandleMovement;
+        inputListener.OnJump -= HandleJump;
+    }*/
 
     private void FixedUpdate()
     {
